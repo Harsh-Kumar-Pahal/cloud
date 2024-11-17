@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Storage</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.js"></script>
+    <style>
+        :root {
+            --primary-blue: #0A84FF;
+            --dark-bg: #1C1C1E;
+            --darker-bg: #000000;
+            --card-bg: #2C2C2E;
+            --text-primary: #FFFFFF;
+            --text-secondary: #98989D;
+            --border-color: #38383A;
+            --hover-bg: #3A3A3C;
+            --success-color: #32D74B;
+            --error-color: #FF453A;
+            --button-hover: #0071E3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background-color: var(--darker-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            background-color: var(--dark-bg);
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        .auth-container {
+            max-width: 400px;
+            margin: 40px auto;
+            background-color: var(--card-bg);
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            background-color: var(--dark-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: var(--button-hover);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .file-label {
+            display: none;
+            padding: 24px;
+            background-color: var(--card-bg);
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            margin: 24px 0;
+            transition: all 0.3s ease;
+        }
+
+        .file-label:hover {
+            border-color: var(--primary-blue);
+            background-color: var(--hover-bg);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        #status {
+            text-align: center;
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .success {
+            background-color: rgba(50, 215, 75, 0.1);
+            color: var(--success-color);
+        }
+
+        .error {
+            background-color: rgba(255, 69, 58, 0.1);
+            color: var(--error-color);
+        }
+
+        .files-section {
+            display: none;
+            margin-top: 32px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .files-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 24px;
+        }
+
+        .file-card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-card:hover {
+            transform: translateY(-4px);
+            background-color: var(--hover-bg);
+        }
+
+        .file-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--dark-bg);
+            border-radius: 10px;
+            font-size: 24px;
+        }
+
+        .file-name {
+            color: var(--text-primary);
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .file-type-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            text-align: center;
+            width: fit-content;
+            margin: 8px auto;
+            display: block;
+        }
+
+        .image-type { background-color: rgba(52, 199, 89, 0.2); color: #34C759; }
+        .document-type { background-color: rgba(10, 132, 255, 0.2); color: #0A84FF; }
+        .video-type { background-color: rgba(255, 69, 58, 0.2); color: #FF453A; }
+        .audio-type { background-color: rgba(255, 159, 10, 0.2); color: #FF9F0A; }
+
+        .file-action {
+            display: block;
+            text-decoration: none;
+            color: var(--primary-blue);
+            font-size: 14px;
+            text-align: center;
+            margin-top: 12px;
+            padding: 8px;
+            border-radius: 6px;
+            background-color: rgba(10, 132, 255, 0.1);
+            transition: background-color 0.3s ease;
+        }
+
+        .file-action:hover {
+            background-color: rgba(10, 132, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .files-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="logo">iCloud Storage</div>
+        <div id="userInfo" style="display: none;">
+            <span id="userName" style="color: var(--text-secondary);"></span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="auth-container" id="userForm">
+            <h2>Sign In</h2>
+            <div class="form-group">
+                <input type="text" id="name" placeholder="Enter your name" required>
+            </div>
+            <div class="form-group">
+                <input type="email" id="email" placeholder="Enter your email" required>
+            </div>
+            <button id="registerBtn">Continue</button>
+        </div>
+        
+        <label for="fileInput" class="file-label" id="fileLabel">
+            <div style="color: var(--primary-blue); font-size: 24px; margin-bottom: 12px;">📁</div>
+            <div style="color: var(--text-primary); font-weight: 500; margin-bottom: 8px;">Drop files here</div>
+            <div style="color: var(--text-secondary); font-size: 14px;">or click to browse</div>
+        </label>
+        <input type="file" id="fileInput">
+        <button id="uploadBtn" style="display: none;">Upload File</button>
+        <p id="status"></p>
+
+        <div class="files-section" id="filesSection">
+            <div class="section-header">
+                <h3>Recent Files</h3>
+            </div>
+            <div class="files-grid" id="filesGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configurations remain the same
+        const firebaseConfigs = {
+            images: {
+                apiKey: "AIzaSyCicMEb-Q3dHxmjX319nWEqjwCzjg--ZrE",
+                authDomain: "airstore-c4fce.firebaseapp.com",
+                databaseURL: "https://airstore-c4fce-default-rtdb.firebaseio.com",
+                projectId: "airstore-c4fce",
+                storageBucket: "airstore-c4fce.appspot.com",
+                messagingSenderId: "733213242091",
+                appId: "1:733213242091:web:9116b295e1776d3d8204ae",
+                measurementId: "G-BR4NXGHMP9"
+            },
+            documents: {
+                apiKey: "AIzaSyA8hSMoS0eJwV95-150YLYa7-BiEBzQRE0",
+                authDomain: "airx-9a82d.firebaseapp.com",
+                projectId: "airx-9a82d",
+                storageBucket: "airx-9a82d.appspot.com",
+                messagingSenderId: "375800409271",
+                appId: "1:375800409271:web:2ab2fd39a257874eb87132",
+                measurementId: "G-0S0Z53KH4E"
+            },
+            videos: {
+                apiKey: "AIzaSyDP98xM0H4cw38hJMy8S8jlfh4fDHRKuiE",
+                authDomain: "airdrive-x.firebaseapp.com",
+                projectId: "airdrive-x",
+                storageBucket: "airdrive-x.appspot.com",
+                messagingSenderId: "461429067685",
+                appId: "1:461429067685:web:85825b87e420d0dee9e24c",
+                measurementId: "G-SV9X7DLYQW"
+            },
+            audio: {
+                apiKey: "AIzaSyBMiMbb1Kf0VWF5QtRlqw9ZwUcIT3sTG88",
+                authDomain: "drive-eb504.firebaseapp.com",
+                projectId: "drive-eb504",
+                storageBucket: "drive-eb504.appspot.com",
+                messagingSenderId: "889360710958",
+                appId: "1:889360710958:web:9ef33bb7c361e3829e8ebf",
+                measurementId: "G-PQB335JW6L"
+            }
+        };
+
+        // Initialize Firebase apps
+        const firebaseApps = {};
+        Object.entries(firebaseConfigs).forEach(([key, config]) => {
+            firebaseApps[key] = firebase.initializeApp(config, key);
+        });
+
+        // Get DOM elements
+        const registerBtn = document.getElementById("registerBtn");
+        const uploadBtn = document.getElementById("uploadBtn");
+        const fileInput = document.getElementById("fileInput");
+        const fileLabel = document.getElementById("fileLabel");
+        const status = document.getElementById("status");
+        const nameInput = document.getElementById("name");
+        const emailInput = document.getElementById("email");
+        const filesSection = document.getElementById("filesSection");
+        const filesGrid = document.getElementById("filesGrid");
+        const userForm = document.getElementById("userForm");
+        const userInfo = document.getElementById("userInfo");
+        const userName = document.getElementById("userName");
+
+        // Check for existing user
+        const userData = JSON.parse(localStorage.getItem('userData'));
+        if (userData) {
+            nameInput.value = userData.name;
+            emailInput.value = userData.email;
+            showUploadInterface();
+            loadUserFiles();
+        }
+
+        // File type detection and icons
+        function getFileTypeInfo(file) {
+            const type = file.type.split('/')[0];
+            let icon = '📄';
+            let category = 'documents';
+            
+            switch(type) {
+                case 'image':
+                    icon = '🖼️';
+                    category = 'images';
+                    break;
+                case 'video':
+                    icon = '🎥';
+                    category = 'videos';
+                    break;
+                case 'audio':
+                    icon = '🎵';
+                    category = 'audio';
+                    break;
+            }
+            
+            return { category, icon };
+        }
+
+        // Rest of the JavaScript remains the same, but update these functions:
+
+        function showUploadInterface() {
+            userForm.style.display = "none";
+            fileLabel.style.display = "block";
+            uploadBtn.style.display = "block";
+            filesSection.style.display = "block";
+            userInfo.style.display = "block";
+            const userData = JSON.parse(localStorage.getItem('userData'));
+            userName.textContent = userData.name;
+        }
+
+       // Continuing inside the same script tag...
+
+       function loadUserFiles() {
+            const files = JSON.parse(localStorage.getItem('userFiles') || '[]');
+            filesGrid.innerHTML = '';
+            
+            files.forEach(file => {
+                const fileCard = document.createElement('div');
+                fileCard.className = 'file-card';
+                
+                const typeClass = `${file.type.slice(0, -1)}-type`;
+                fileCard.innerHTML = `
+                    <div class="file-icon">${getFileTypeInfo({ type: file.type + '/' }).icon}</div>
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-type-badge ${typeClass}">${file.type}</div>
+                    <a href="${file.url}" target="_blank" class="file-action">View/Download</a>
+                `;
+                
+                filesGrid.appendChild(fileCard);
+            });
+
+            // Show no files message if empty
+            if (files.length === 0) {
+                filesGrid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">
+                        No files uploaded yet
+                    </div>
+                `;
+            }
+        }
+
+        // Update file label when file is selected
+        fileInput.addEventListener("change", () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const { icon } = getFileTypeInfo(file);
+                fileLabel.innerHTML = `
+                    <div style="color: var(--primary-blue); font-size: 24px; margin-bottom: 12px;">${icon}</div>
+                    <div style="color: var(--text-primary); font-weight: 500; margin-bottom: 8px;">${file.name}</div>
+                    <div style="color: var(--text-secondary); font-size: 14px;">${formatFileSize(file.size)}</div>
+                `;
+            } else {
+                fileLabel.innerHTML = `
+                    <div style="color: var(--primary-blue); font-size: 24px; margin-bottom: 12px;">📁</div>
+                    <div style="color: var(--text-primary); font-weight: 500; margin-bottom: 8px;">Drop files here</div>
+                    <div style="color: var(--text-secondary); font-size: 14px;">or click to browse</div>
+                `;
+            }
+        });
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Register User
+        registerBtn.addEventListener("click", () => {
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim();
+
+            if (!name || !email) {
+                showStatus("Please enter both name and email.", "error");
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                showStatus("Please enter a valid email address.", "error");
+                return;
+            }
+
+            // Save to localStorage
+            localStorage.setItem('userData', JSON.stringify({ name, email }));
+            showUploadInterface();
+            showStatus(`Welcome, ${name}! Your account is ready.`, "success");
+        });
+
+        // Upload File
+        uploadBtn.addEventListener("click", async () => {
+            const file = fileInput.files[0];
+            const userData = JSON.parse(localStorage.getItem('userData'));
+            
+            if (!file || !userData) {
+                showStatus("Please select a file and ensure you're registered.", "error");
+                return;
+            }
+
+            showStatus("Uploading file...", "");
+            uploadBtn.disabled = true;
+
+            try {
+                const { category: fileType } = getFileTypeInfo(file);
+                const storage = firebaseApps[fileType].storage();
+                const storageRef = storage.ref(`users/${userData.email}/${file.name}`);
+                
+                // Create upload task
+                const uploadTask = storageRef.put(file);
+
+                // Add progress listener
+                uploadTask.on('state_changed', 
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        showStatus(`Upload progress: ${Math.round(progress)}%`, "");
+                    },
+                    (error) => {
+                        showStatus(`Upload error: ${error.message}`, "error");
+                    },
+                    async () => {
+                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                        
+                        // Save file metadata to localStorage
+                        const files = JSON.parse(localStorage.getItem('userFiles') || '[]');
+                        files.push({
+                            name: file.name,
+                            type: fileType,
+                            url: downloadURL,
+                            size: file.size,
+                            timestamp: new Date().toISOString()
+                        });
+                        localStorage.setItem('userFiles', JSON.stringify(files));
+                        
+                        showStatus(`File "${file.name}" uploaded successfully!`, "success");
+                        loadUserFiles();
+                        
+                        // Reset file input
+                        fileInput.value = "";
+                        fileLabel.innerHTML = `
+                            <div style="color: var(--primary-blue); font-size: 24px; margin-bottom: 12px;">📁</div>
+                            <div style="color: var(--text-primary); font-weight: 500; margin-bottom: 8px;">Drop files here</div>
+                            <div style="color: var(--text-secondary); font-size: 14px;">or click to browse</div>
+                        `;
+                    }
+                );
+            } catch (error) {
+                showStatus(`Upload error: ${error.message}`, "error");
+                console.error("Upload error:", error);
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // Add drag and drop support
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            fileLabel.style.borderColor = 'var(--primary-blue)';
+            fileLabel.style.backgroundColor = 'var(--hover-bg)';
+        }
+
+        function unhighlight(e) {
+            fileLabel.style.borderColor = 'var(--border-color)';
+            fileLabel.style.backgroundColor = 'var(--card-bg)';
+        }
+
+        fileLabel.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            fileInput.files = dt.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+
+        // Helper function to validate email
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        // Helper function to show status messages
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = type ? type : "";
+        }
+    </script>
+</body>
+</html>
