@@ -6,6 +6,8 @@
     <title>Cloud Storage</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
     <style>
         :root {
             --primary-blue: #0A84FF;
@@ -60,6 +62,35 @@
             padding: 24px;
             width: 100%;
             flex-grow: 1;
+        }
+
+        .storage-info {
+            background-color: var(--card-bg);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .storage-bar {
+            height: 8px;
+            background-color: var(--dark-bg);
+            border-radius: 4px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+
+        .storage-used {
+            height: 100%;
+            background-color: var(--primary-blue);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .storage-text {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-secondary);
+            font-size: 14px;
         }
 
         .auth-container {
@@ -211,6 +242,13 @@
             word-break: break-all;
         }
 
+        .file-size {
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-align: center;
+            margin-top: 4px;
+        }
+
         .file-type-badge {
             display: inline-block;
             padding: 4px 8px;
@@ -227,21 +265,35 @@
         .video-type { background-color: rgba(255, 69, 58, 0.2); color: #FF453A; }
         .audio-type { background-color: rgba(255, 159, 10, 0.2); color: #FF9F0A; }
 
+        .file-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
         .file-action {
-            display: block;
+            flex: 1;
             text-decoration: none;
             color: var(--primary-blue);
             font-size: 14px;
             text-align: center;
-            margin-top: 12px;
             padding: 8px;
             border-radius: 6px;
             background-color: rgba(10, 132, 255, 0.1);
             transition: background-color 0.3s ease;
         }
 
+        .delete-action {
+            color: var(--error-color);
+            background-color: rgba(255, 69, 58, 0.1);
+        }
+
         .file-action:hover {
             background-color: rgba(10, 132, 255, 0.2);
+        }
+
+        .delete-action:hover {
+            background-color: rgba(255, 69, 58, 0.2);
         }
 
         @media (max-width: 768px) {
@@ -275,6 +327,72 @@
             </div>
             <button id="registerBtn">Continue</button>
         </div>
+
+        <div class="storage-info" id="storageInfo" style="display: none;">
+            <!-- Image Storage -->
+            <div class="storage-type">
+                <div class="storage-text">
+                    <div class="storage-label">
+                        <div class="storage-icon images">
+                            <i class="fas fa-image" style="color: rgb(0, 136, 255);"></i>
+                        </div>
+                        <span>Images Storage</span>
+                    </div>
+                    <span id="imagesStorageUsed">0 MB of 5 GB</span>
+                </div>
+                <div class="storage-bar">
+                    <div class="storage-used images" id="imagesStorageBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Documents Storage -->
+            <div class="storage-type">
+                <div class="storage-text">
+                    <div class="storage-label">
+                        <div class="storage-icon documents">
+                            <i class="fas fa-file-alt" style="color: rgb(255, 183, 0);"></i>
+                        </div>
+                        <span>Documents Storage</span>
+                    </div>
+                    <span id="documentsStorageUsed">0 MB of 5 GB</span>
+                </div>
+                <div class="storage-bar">
+                    <div class="storage-used documents" id="documentsStorageBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Video Storage -->
+            <div class="storage-type">
+                <div class="storage-text">
+                    <div class="storage-label">
+                        <div class="storage-icon videos">
+                            <i class="fas fa-video" style="color: rgb(60, 255, 0);"></i>
+                        </div>
+                        <span>Videos Storage</span>
+                    </div>
+                    <span id="videosStorageUsed">0 MB of 5 GB</span>
+                </div>
+                <div class="storage-bar">
+                    <div class="storage-used videos" id="videosStorageBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Audio Storage -->
+            <div class="storage-type">
+                <div class="storage-text">
+                    <div class="storage-label">
+                        <div class="storage-icon audio">
+                            <i class="fas fa-music" style="color: rgb(128, 0, 255);"></i>
+                        </div>
+                        <span>Audio Storage</span>
+                    </div>
+                    <span id="audioStorageUsed">0 MB of 5 GB</span>
+                </div>
+                <div class="storage-bar">
+                    <div class="storage-used audio" id="audioStorageBar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
         
         <label for="fileInput" class="file-label" id="fileLabel">
             <div style="color: var(--primary-blue); font-size: 24px; margin-bottom: 12px;">📁</div>
@@ -294,7 +412,8 @@
     </div>
 
     <script>
-        // Firebase configurations remain the same
+        const MAX_STORAGE_PER_TYPE = 5 * 1024 * 1024 * 1024; // 5GB in bytes
+
         const firebaseConfigs = {
             images: {
                 apiKey: "AIzaSyCicMEb-Q3dHxmjX319nWEqjwCzjg--ZrE",
@@ -335,264 +454,292 @@
             }
         };
 
-        // Initialize Firebase apps
         const firebaseApps = {};
         Object.entries(firebaseConfigs).forEach(([key, config]) => {
             firebaseApps[key] = firebase.initializeApp(config, key);
         });
 
-        // Get DOM elements
-        const registerBtn = document.getElementById("registerBtn");
-        const uploadBtn = document.getElementById("uploadBtn");
-        const fileInput = document.getElementById("fileInput");
-        const fileLabel = document.getElementById("fileLabel");
-        const status = document.getElementById("status");
-        const nameInput = document.getElementById("name");
-        const emailInput = document.getElementById("email");
-        const filesSection = document.getElementById("filesSection");
-        const filesGrid = document.getElementById("filesGrid");
-        const userForm = document.getElementById("userForm");
-        const userInfo = document.getElementById("userInfo");
-        const userName = document.getElementById("userName");
+        // DOM Elements
+        const elements = {
+            registerBtn: document.getElementById("registerBtn"),
+            uploadBtn: document.getElementById("uploadBtn"),
+            fileInput: document.getElementById("fileInput"),
+            fileLabel: document.getElementById("fileLabel"),
+            status: document.getElementById("status"),
+            nameInput: document.getElementById("name"),
+            emailInput: document.getElementById("email"),
+            filesSection: document.getElementById("filesSection"),
+            filesGrid: document.getElementById("filesGrid"),
+            userForm: document.getElementById("userForm"),
+            storageInfo: document.getElementById("storageInfo"),
+            userInfo: document.getElementById("userInfo"),
+            userName: document.getElementById("userName")
+        };
 
-        // Check for existing user
-        const userData = JSON.parse(localStorage.getItem('userData'));
-        if (userData) {
-            nameInput.value = userData.name;
-            emailInput.value = userData.email;
-            showUploadInterface();
-            loadUserFiles();
+        // Storage bars and usage text elements
+        const storageElements = {};
+        ['images', 'documents', 'videos', 'audio'].forEach(type => {
+            storageElements[type] = {
+                bar: document.getElementById(`${type}StorageBar`),
+                text: document.getElementById(`${type}StorageUsed`)
+            };
+        });
+
+        let currentUser = null;
+
+        // Helper functions
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // File type detection and icons
-        function getFileTypeInfo(file) {
-            const type = file.type.split('/')[0];
-            let icon = '📄';
-            let category = 'documents';
+        function getFileType(file) {
+            if (file.type.startsWith('image/')) return 'images';
+            if (file.type.startsWith('video/')) return 'videos';
+            if (file.type.startsWith('audio/')) return 'audio';
+            return 'documents';
+        }
+
+        function showStatus(message, type) {
+            elements.status.textContent = message;
+            elements.status.className = type;
+            elements.status.style.display = 'block';
+            setTimeout(() => {
+                elements.status.style.display = 'none';
+            }, 5000);
+        }
+
+        // Update storage info for each type
+        function updateStorageInfo() {
+            const files = JSON.parse(localStorage.getItem('files') || '[]');
+            const typeStorage = {
+                images: 0,
+                documents: 0,
+                videos: 0,
+                audio: 0
+            };
+
+            // Calculate total size for each type
+            files.forEach(file => {
+                typeStorage[file.type] += file.size;
+            });
+
+            // Update UI for each type
+            Object.entries(typeStorage).forEach(([type, bytes]) => {
+                const percentage = (bytes / MAX_STORAGE_PER_TYPE) * 100;
+                storageElements[type].bar.style.width = `${Math.min(percentage, 100)}%`;
+                storageElements[type].text.textContent = `${formatBytes(bytes)} of ${formatBytes(MAX_STORAGE_PER_TYPE)}`;
+            });
+        }
+
+        // Check if file upload would exceed storage limit
+        function checkStorageLimit(file) {
+            const type = getFileType(file);
+            const files = JSON.parse(localStorage.getItem('files') || '[]');
+            const currentTypeUsage = files
+                .filter(f => f.type === type)
+                .reduce((acc, f) => acc + f.size, 0);
+
+            return (currentTypeUsage + file.size) <= MAX_STORAGE_PER_TYPE;
+        }
+
+        // User registration
+        elements.registerBtn.addEventListener('click', () => {
+            const name = elements.nameInput.value.trim();
+            const email = elements.emailInput.value.trim();
             
-            switch(type) {
-                case 'image':
-                    icon = '🖼️';
-                    category = 'images';
-                    break;
-                case 'video':
-                    icon = '🎥';
-                    category = 'videos';
-                    break;
-                case 'audio':
-                    icon = '🎵';
-                    category = 'audio';
-                    break;
+            if (!name || !email) {
+                showStatus('Please fill in all fields', 'error');
+                return;
             }
+
+            currentUser = { name, email };
+            localStorage.setItem('user', JSON.stringify(currentUser));
             
-            return { category, icon };
-        }
+            elements.userForm.style.display = 'none';
+            elements.storageInfo.style.display = 'block';
+            elements.fileLabel.style.display = 'block';
+            elements.filesSection.style.display = 'block';
+            elements.userName.textContent = name;
+            elements.userInfo.style.display = 'block';
+            
+            loadFiles();
+        });
 
-        // Rest of the JavaScript remains the same, but update these functions:
+        // File upload handling
+        elements.fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (!checkStorageLimit(file)) {
+                    showStatus(`Storage limit exceeded for ${getFileType(file)} storage!`, 'error');
+                    elements.fileInput.value = '';
+                    return;
+                }
+                elements.uploadBtn.style.display = 'block';
+                elements.uploadBtn.textContent = `Upload ${file.name}`;
+            }
+        });
 
-        function showUploadInterface() {
-            userForm.style.display = "none";
-            fileLabel.style.display = "block";
-            uploadBtn.style.display = "block";
-            filesSection.style.display = "block";
-            userInfo.style.display = "block";
-            const userData = JSON.parse(localStorage.getItem('userData'));
-            userName.textContent = userData.name;
-        }
+        elements.uploadBtn.addEventListener('click', async () => {
+            if (!currentUser || !elements.fileInput.files.length) return;
 
-       // Continuing inside the same script tag...
+            const file = elements.fileInput.files[0];
+            const fileType = getFileType(file);
+            const storage = firebase.storage(firebaseApps[fileType]);
+            const storageRef = storage.ref();
+            
+            // Create a reference to the file
+            const fileName = `${Date.now()}_${file.name}`;
+            const fileRef = storageRef.child(`${currentUser.email}/${fileName}`);
 
-       function loadUserFiles() {
-            const files = JSON.parse(localStorage.getItem('userFiles') || '[]');
-            filesGrid.innerHTML = '';
+            try {
+                elements.uploadBtn.disabled = true;
+                elements.uploadBtn.textContent = 'Uploading...';
+                
+                // Upload the file
+                await fileRef.put(file);
+                const downloadURL = await fileRef.getDownloadURL();
+                
+                // Save file metadata
+                const fileData = {
+                    name: file.name,
+                    type: fileType,
+                    size: file.size,
+                    uploadDate: new Date().toISOString(),
+                    downloadURL,
+                    path: fileRef.fullPath
+                };
+                
+                // Store in localStorage
+                const files = JSON.parse(localStorage.getItem('files') || '[]');
+                files.push(fileData);
+                localStorage.setItem('files', JSON.stringify(files));
+                
+                showStatus('File uploaded successfully!', 'success');
+                loadFiles();
+                
+                // Reset the form
+                elements.fileInput.value = '';
+                elements.uploadBtn.style.display = 'none';
+                updateStorageInfo();
+            } catch (error) {
+                showStatus('Error uploading file: ' + error.message, 'error');
+            } finally {
+                elements.uploadBtn.disabled = false;
+            }
+        });
+
+        // Load and display files
+        async function loadFiles() {
+            if (!currentUser) return;
+            
+            const files = JSON.parse(localStorage.getItem('files') || '[]');
+            elements.filesGrid.innerHTML = '';
             
             files.forEach(file => {
                 const fileCard = document.createElement('div');
                 fileCard.className = 'file-card';
                 
-                const typeClass = `${file.type.slice(0, -1)}-type`;
-                fileCard.innerHTML = `
-                    <div class="file-icon">${getFileTypeInfo({ type: file.type + '/' }).icon}</div>
-                    <div class="file-name">${file.name}</div>
-                    <div class="file-type-badge ${typeClass}">${file.type}</div>
-                    <a href="${file.url}" target="_blank" class="file-action">View/Download</a>
-                `;
-                
-                filesGrid.appendChild(fileCard);
-            });
+                const typeIcon = {
+                    images: 'fa-image',
+                    documents: 'fa-file-alt',
+                    videos: 'fa-video',
+                    audio: 'fa-music'
+                }[file.type];
 
-            // Show no files message if empty
-            if (files.length === 0) {
-                filesGrid.innerHTML = `
-                    <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">
-                        No files uploaded yet
+                fileCard.innerHTML = `
+                    <div class="file-icon">
+                        <i class="fas ${typeIcon}"></i>
+                    </div>
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-type-badge ${file.type}-type">${file.type}</div>
+                    <div class="file-size">${formatBytes(file.size)}</div>
+                    <div class="file-actions">
+                        <a href="${file.downloadURL}" class="file-action" target="_blank">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <button class="file-action delete-action" data-path="${file.path}">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 `;
-            }
+
+                const deleteBtn = fileCard.querySelector('.delete-action');
+                deleteBtn.addEventListener('click', () => deleteFile(file));
+                
+                elements.filesGrid.appendChild(fileCard);
+            });
+
+            updateStorageInfo();
         }
 
-        // Update file label when file is selected
-        fileInput.addEventListener("change", () => {
-            const file = fileInput.files[0];
-            if (file) {
-                const { icon } = getFileTypeInfo(file);
-                fileLabel.innerHTML = `
-                    <div style="color: var(--primary-blue); font-size: 24px; margin-bottom: 12px;">${icon}</div>
-                    <div style="color: var(--text-primary); font-weight: 500; margin-bottom: 8px;">${file.name}</div>
-                    <div style="color: var(--text-secondary); font-size: 14px;">${formatFileSize(file.size)}</div>
-                `;
-            } else {
-                fileLabel.innerHTML = `
-                    <div style="color: var(--primary-blue); font-size: 24px; margin-bottom: 12px;">📁</div>
-                    <div style="color: var(--text-primary); font-weight: 500; margin-bottom: 8px;">Drop files here</div>
-                    <div style="color: var(--text-secondary); font-size: 14px;">or click to browse</div>
-                `;
-            }
-        });
-
-        // Format file size
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        // Register User
-        registerBtn.addEventListener("click", () => {
-            const name = nameInput.value.trim();
-            const email = emailInput.value.trim();
-
-            if (!name || !email) {
-                showStatus("Please enter both name and email.", "error");
-                return;
-            }
-
-            if (!isValidEmail(email)) {
-                showStatus("Please enter a valid email address.", "error");
-                return;
-            }
-
-            // Save to localStorage
-            localStorage.setItem('userData', JSON.stringify({ name, email }));
-            showUploadInterface();
-            showStatus(`Welcome, ${name}! Your account is ready.`, "success");
-        });
-
-        // Upload File
-        uploadBtn.addEventListener("click", async () => {
-            const file = fileInput.files[0];
-            const userData = JSON.parse(localStorage.getItem('userData'));
-            
-            if (!file || !userData) {
-                showStatus("Please select a file and ensure you're registered.", "error");
-                return;
-            }
-
-            showStatus("Uploading file...", "");
-            uploadBtn.disabled = true;
+        // Delete file
+        async function deleteFile(file) {
+            if (!confirm('Are you sure you want to delete this file?')) return;
 
             try {
-                const { category: fileType } = getFileTypeInfo(file);
-                const storage = firebaseApps[fileType].storage();
-                const storageRef = storage.ref(`users/${userData.email}/${file.name}`);
-                
-                // Create upload task
-                const uploadTask = storageRef.put(file);
+                const storage = firebase.storage(firebaseApps[file.type]);
+                const fileRef = storage.ref(file.path);
+                await fileRef.delete();
 
-                // Add progress listener
-                uploadTask.on('state_changed', 
-                    (snapshot) => {
-                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                        showStatus(`Upload progress: ${Math.round(progress)}%`, "");
-                    },
-                    (error) => {
-                        showStatus(`Upload error: ${error.message}`, "error");
-                    },
-                    async () => {
-                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                        
-                        // Save file metadata to localStorage
-                        const files = JSON.parse(localStorage.getItem('userFiles') || '[]');
-                        files.push({
-                            name: file.name,
-                            type: fileType,
-                            url: downloadURL,
-                            size: file.size,
-                            timestamp: new Date().toISOString()
-                        });
-                        localStorage.setItem('userFiles', JSON.stringify(files));
-                        
-                        showStatus(`File "${file.name}" uploaded successfully!`, "success");
-                        loadUserFiles();
-                        
-                        // Reset file input
-                        fileInput.value = "";
-                        fileLabel.innerHTML = `
-                            <div style="color: var(--primary-blue); font-size: 24px; margin-bottom: 12px;">📁</div>
-                            <div style="color: var(--text-primary); font-weight: 500; margin-bottom: 8px;">Drop files here</div>
-                            <div style="color: var(--text-secondary); font-size: 14px;">or click to browse</div>
-                        `;
-                    }
-                );
+                // Remove from localStorage
+                const files = JSON.parse(localStorage.getItem('files') || '[]');
+                const updatedFiles = files.filter(f => f.path !== file.path);
+                localStorage.setItem('files', JSON.stringify(updatedFiles));
+
+                showStatus('File deleted successfully!', 'success');
+                loadFiles();
             } catch (error) {
-                showStatus(`Upload error: ${error.message}`, "error");
-                console.error("Upload error:", error);
-            } finally {
-                uploadBtn.disabled = false;
+                showStatus('Error deleting file: ' + error.message, 'error');
+            }
+        }
+
+        // Drag and drop handling
+        elements.fileLabel.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.fileLabel.style.borderColor = 'var(--primary-blue)';
+            elements.fileLabel.style.backgroundColor = 'var(--hover-bg)';
+        });
+
+        elements.fileLabel.addEventListener('dragleave', () => {
+            elements.fileLabel.style.borderColor = 'var(--border-color)';
+            elements.fileLabel.style.backgroundColor = 'var(--card-bg)';
+        });
+
+        elements.fileLabel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.fileLabel.style.borderColor = 'var(--border-color)';
+            elements.fileLabel.style.backgroundColor = 'var(--card-bg)';
+            
+            if (e.dataTransfer.files.length) {
+                const file = e.dataTransfer.files[0];
+                if (!checkStorageLimit(file)) {
+                    showStatus(`Storage limit exceeded for ${getFileType(file)} storage!`, 'error');
+                    return;
+                }
+                elements.fileInput.files = e.dataTransfer.files;
+                elements.uploadBtn.style.display = 'block';
+                elements.uploadBtn.textContent = `Upload ${file.name}`;
             }
         });
 
-        // Add drag and drop support
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            fileLabel.addEventListener(eventName, preventDefaults, false);
-            document.body.addEventListener(eventName, preventDefaults, false);
+        // Initialize
+        window.addEventListener('load', () => {
+            const savedUser = localStorage.getItem('user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                elements.userForm.style.display = 'none';
+                elements.storageInfo.style.display = 'block';
+                elements.fileLabel.style.display = 'block';
+                elements.filesSection.style.display = 'block';
+                elements.userName.textContent = currentUser.name;
+                elements.userInfo.style.display = 'block';
+                loadFiles();
+            }
         });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            fileLabel.addEventListener(eventName, highlight, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            fileLabel.addEventListener(eventName, unhighlight, false);
-        });
-
-        function highlight(e) {
-            fileLabel.style.borderColor = 'var(--primary-blue)';
-            fileLabel.style.backgroundColor = 'var(--hover-bg)';
-        }
-
-        function unhighlight(e) {
-            fileLabel.style.borderColor = 'var(--border-color)';
-            fileLabel.style.backgroundColor = 'var(--card-bg)';
-        }
-
-        fileLabel.addEventListener('drop', handleDrop, false);
-
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const file = dt.files[0];
-            fileInput.files = dt.files;
-            fileInput.dispatchEvent(new Event('change'));
-        }
-
-        // Helper function to validate email
-        function isValidEmail(email) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return emailRegex.test(email);
-        }
-
-        // Helper function to show status messages
-        function showStatus(message, type) {
-            status.textContent = message;
-            status.className = type ? type : "";
-        }
     </script>
 </body>
 </html>
